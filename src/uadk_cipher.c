@@ -341,20 +341,11 @@ static int uadk_cipher_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
 		return 0;
 	}
 
-	priv->sess = wd_cipher_alloc_sess(&priv->setup);
-	if (!priv->sess)
-		return 0;
-
 	return 1;
 }
 
 static int uadk_cipher_cleanup(EVP_CIPHER_CTX *ctx)
 {
-	struct cipher_priv_ctx *priv =
-		(struct cipher_priv_ctx *) EVP_CIPHER_CTX_get_cipher_data(ctx);
-	if (priv->sess)
-		wd_cipher_free_sess(priv->sess);
-
 	return 1;
 }
 
@@ -369,6 +360,12 @@ static int uadk_do_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 		(struct cipher_priv_ctx *) EVP_CIPHER_CTX_get_cipher_data(ctx);
 	struct async_op op;
 	int ret;
+
+	uadk_init_cipher();
+
+	priv->sess = wd_cipher_alloc_sess(&priv->setup);
+	if (!priv->sess)
+		return 0;
 
 	ret = wd_cipher_set_key(priv->sess, priv->key, EVP_CIPHER_CTX_key_length(ctx));
 	if (ret)
@@ -401,6 +398,8 @@ static int uadk_do_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 		if (!ret)
 			goto out_notify;
 	}
+	if (priv->sess)
+		wd_cipher_free_sess(priv->sess);
 
 	return 1;
 
